@@ -14,6 +14,7 @@ using Timer = System.Timers.Timer;
 using System.Threading.Channels;
 using System.Runtime.Remoting.Channels;
 using System.Security.Cryptography.X509Certificates;
+using DSharpPlus.Net.Models;
 
 namespace TimeGateMarshal
 {
@@ -56,7 +57,7 @@ namespace TimeGateMarshal
 
 
             // Create a timer to check the time periodically
-            var timer = new Timer(60000); // 1 min interval
+            var timer = new Timer(10000); // 1 min interval
             timer.Elapsed += async (sender, e) =>
             {
                 if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Thursday)
@@ -74,8 +75,8 @@ namespace TimeGateMarshal
                     if (currentTime >= lockTime && currentTime > unlockTime && !isChannelLocked)
                     {
                         // Lock the channel
-                        await LockChannel(Client, 1144339837969780847); // Change to your channel ID
                         await DeleteAllMessagesInChannel(Client, 1144339837969780847);
+                        await LockChannel(Client, 1144339837969780847); // Change to your channel ID
                         isChannelLocked = true; // Set the flag to indicate the channel is locked
                         isChannelUnlocked = false;
                     }
@@ -114,19 +115,28 @@ namespace TimeGateMarshal
                 // Adjust permissions to lock the channel.
                 var everyoneRole = channel.Guild.GetRole(726995505623728148);
                 var preimerSeries = channel.Guild.GetRole(726996405968961577);
+                var discordMod = channel.Guild.GetRole(965991183820152852);
 
                 var overwriteBuilder = new DiscordOverwriteBuilder[] {new DiscordOverwriteBuilder(everyoneRole)
-                    .Deny(Permissions.SendMessages)
-                    .Deny(Permissions.ReadMessageHistory)
                     .Deny(Permissions.AccessChannels)};
 
-                var overwriteBuilder1 = new DiscordOverwriteBuilder[] {new DiscordOverwriteBuilder(everyoneRole)
+                var overwriteBuilder1 = new DiscordOverwriteBuilder[] {new DiscordOverwriteBuilder(preimerSeries)
                     .Deny(Permissions.SendMessages)
                     .Deny(Permissions.ReadMessageHistory)};
 
-                // Modify the channel's permissions with the new overwrite
+                var overwriteBuilder3 = new DiscordOverwriteBuilder[] {new DiscordOverwriteBuilder(discordMod)
+                    .Allow(Permissions.All)};
+
+                //Modify the channel's permissions with the new overwrite
+                //await channel.AddOverwriteAsync(everyoneRole, Permissions.None);
+                await channel.AddOverwriteAsync(preimerSeries, Permissions.AccessChannels);
+                await channel.AddOverwriteAsync(discordMod, Permissions.All);
+
+
+
+                //await channel.ModifyAsync(x => x.PermissionOverwrites = overwriteBuilder1);
                 await channel.ModifyAsync(x => x.PermissionOverwrites = overwriteBuilder);
-                await channel.ModifyAsync(x => x.PermissionOverwrites = overwriteBuilder1);
+                //await channel.ModifyAsync(x => x.PermissionOverwrites = overwriteBuilder3);
 
                 Console.WriteLine("Channel locked"); // Debugging message
             }
@@ -145,8 +155,17 @@ namespace TimeGateMarshal
                                                     
                 // Remove the specific permissions to unlock the channel.
                 var preimerSeries = channel.Guild.GetRole(726996405968961577);
+                var everyoneRole = channel.Guild.GetRole(726995505623728148);
+                var discordMod = channel.Guild.GetRole(965991183820152852);
 
-                await channel.AddOverwriteAsync(preimerSeries, Permissions.SendMessages | Permissions.ReadMessageHistory);
+                //var overwriteBuilder = new DiscordOverwriteBuilder[] {new DiscordOverwriteBuilder(everyoneRole)
+                //    .Deny(Permissions.SendMessages)
+                //    .Deny(Permissions.ReadMessageHistory)};
+
+                //await channel.ModifyAsync(x => x.PermissionOverwrites = overwriteBuilder);
+                //await channel.AddOverwriteAsync(everyoneRole, Permissions.None);
+                await channel.AddOverwriteAsync(preimerSeries, Permissions.SendMessages | Permissions.ReadMessageHistory | Permissions.AccessChannels);
+                await channel.AddOverwriteAsync(discordMod, Permissions.All);
                 Console.WriteLine("Channel unlocked"); // Debugging message
             }
         }
