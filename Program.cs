@@ -15,6 +15,7 @@ using System.Threading.Channels;
 using System.Runtime.Remoting.Channels;
 using System.Security.Cryptography.X509Certificates;
 using DSharpPlus.Net.Models;
+using DSharpPlus.EventArgs;
 
 namespace TimeGateMarshal
 {
@@ -22,6 +23,7 @@ namespace TimeGateMarshal
     {
         private static DiscordClient Client { get; set; }
         private static CommandsNextExtension Commands { get; set; }
+        private static List<ulong> FlaggedUsers { get; set; } = new List<ulong>();
 
         static async Task Main(string[] args)
         {
@@ -60,7 +62,7 @@ namespace TimeGateMarshal
             var timer = new Timer(10000); // 1 min interval
             timer.Elapsed += async (sender, e) =>
             {
-                if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Thursday)
+                if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Monday)
                 {
                     var currentTime = DateTime.UtcNow;
 
@@ -93,6 +95,9 @@ namespace TimeGateMarshal
             };
 
             timer.Start();
+
+            // Register the MessageCreated event handler
+            Client.MessageCreated += HandleMessage;
 
 
             await Client.ConnectAsync();
@@ -183,6 +188,53 @@ namespace TimeGateMarshal
                 await channel.DeleteMessagesAsync(messages);
                 Console.WriteLine("Channel messages deleted"); // Debugging message
             }
+        }
+
+        static async Task HandleMessage(DiscordClient sender, MessageCreateEventArgs e)
+        {
+            // List of banned words or phrases
+            var bannedWords = new List<string> { "fuck", "fUck", "fuCk", "fucK", "FucK", "FUcK", "FuCK", "FUCK",
+                "shit", "shIt", "shiT", "sHit", "sHIt", "sHIi", "sHIT", "SHIT",
+                "bitch", "biTch", "biTCh", "biTCj", "bitCh", "bitCH", "bitCjH", "bitch",
+                "asshole", "asShole", "asShoLe", "asSholE", "Asshole", "AsShole", "AsShoLe", "AsSholE",
+                "dick", "diCk", "diCk", "dicK", "Dick", "DiCk", "DiCk", "DiCk",
+                "pussy", "puSsy", "pusSy", "pussY", "Pussy", "PuSsy", "PusSy", "PussY",
+                "cock", "coCk", "coCk", "cocK", "Cock", "CoCk", "CoCk", "CoCk",
+                "cunt", "cuNt", "cuNt", "cunT", "Cunt", "CuNt", "CuNt", "CunT",
+                "nigger", "nigGer", "nigGer", "niggEr", "niggeR", "Nigger", "NigGer", "NigGer", "NiggEr", "NiggeR",
+                "faggot", "faGgot", "faGgot", "fagGot", "faggOt", "faggoT", "Faggot", "FaGgot", "FaGgot", "FagGot", "FaggOt", "FaggOT" };
+
+            // Check is the message contains any banned words
+            if (ContainsBannedWord(e.Message.Content, bannedWords))
+            {
+                // Flag the user by storing their user ID
+                FlaggedUsers.Add(e.Author.Id);
+
+                // Timeout the user for a specified duration
+                var timeoutDuration = TimeSpan.FromSeconds(15);
+
+                // Get the DiscordMember object for the user
+                var member = await e.Guild.GetMemberAsync(e.Author.Id);
+
+                // Apply the timeout
+                await member.TimeoutAsync(DateTimeOffset.UtcNow.Add(timeoutDuration));
+
+                // Delete the message
+                await e.Message.DeleteAsync();
+
+                // Send a warning message
+                await e.Channel.SendMessageAsync($"User {e.Author.Mention} has been timed out for using banned words.");
+            }
+        }
+
+        static bool ContainsBannedWord(string messageContent, List<string> bannedWords)
+        {
+            foreach (var word in bannedWords)
+            {
+                if (messageContent.Contains(word))
+                    return true;
+            }
+            return false;
         }
     }
 }
