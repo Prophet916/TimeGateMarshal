@@ -16,14 +16,16 @@ using System.Runtime.Remoting.Channels;
 using System.Security.Cryptography.X509Certificates;
 using DSharpPlus.Net.Models;
 using DSharpPlus.EventArgs;
+using DSharpPlus.Interactivity.Extensions;
+using DSharpPlus.Interactivity;
 
 namespace TimeGateMarshal
 {
-    internal class Program
+    public sealed class Program
     {
-        private static DiscordClient Client { get; set; }
-        private static CommandsNextExtension Commands { get; set; }
-        private static List<ulong> FlaggedUsers { get; set; } = new List<ulong>();
+        public static DiscordClient Client { get; set; }
+        public static CommandsNextExtension Commands { get; set; }
+        public static List<ulong> FlaggedUsers { get; set; } = new List<ulong>();
 
         static async Task Main(string[] args)
         {
@@ -39,6 +41,11 @@ namespace TimeGateMarshal
             };
 
             Client = new DiscordClient(discordConfig);
+
+            Client.UseInteractivity(new InteractivityConfiguration()
+            {
+                Timeout = TimeSpan.FromMinutes(2)
+            });
 
             Client.Ready += Client_Ready;
 
@@ -62,7 +69,7 @@ namespace TimeGateMarshal
             var timer = new Timer(10000); // 1 min interval
             timer.Elapsed += async (sender, e) =>
             {
-                if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Monday)
+                if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Thursday)
                 {
                     var currentTime = DateTime.UtcNow;
 
